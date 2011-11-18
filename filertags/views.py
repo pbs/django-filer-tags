@@ -19,6 +19,7 @@ def css_preprocessor(request, path):
             local_cache[path] = "url('%s')" % filerfile(path)
         return local_cache[path]
 
+
     return HttpResponse(re.sub(
         r"url\(['\"]([^'\"]+)['\"]\)", change_urls, f.read()
-    ))
+    ), mimetype='text/css')
