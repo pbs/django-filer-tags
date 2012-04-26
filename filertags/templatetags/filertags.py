@@ -9,8 +9,8 @@ def filerthumbnail(path):
     parts = path.strip('/').split('/')
     folder_names = parts[:-1]
     file_name = parts[-1]
-    assert folder_names
-    assert file_name
+    if not path or not folder_names or not file_name:
+        return None
 
     current_parent = None
     try:
@@ -30,8 +30,9 @@ def filerthumbnail(path):
 
 def filerfile(path):
     ft = filerthumbnail(path)
-    if ft:
-        return ft.url
+    if ft is None or not ft:
+        return ''
+    return ft.url
 
 def mustache(path):
     url = filerfile(path)
