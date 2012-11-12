@@ -2,11 +2,14 @@ import os.path
 import re
 import urlparse
 
+from django.core.cache import cache
 from django.db.models import signals
+from django.template.defaultfilters import slugify
 
 from filer.models.filemodels import File
 from filer.models.imagemodels import Image
-from templatetags.filertags import filerfile
+
+from templatetags.filertags import filerfile, get_filerfile_cache_key
 
 
 _LOGICAL_URL_TEMPLATE = "/* logicalurl('%s') */"
@@ -138,5 +141,17 @@ def resolve_css_resource_urls(instance, **kwargs):
         _update_referencing_css_files(instance)
 
 
+def clear_urls_cache(instance, **kwargs):
+    """Clears urls cached by the filerfile tag. """
+    logical_file_path = os.path.join(
+        _construct_logical_folder_path(instance),
+        instance.original_filename)
+    cache_key = get_filerfile_cache_key(logical_file_path)
+    cache.delete(cache_key)
+
+
 signals.post_save.connect(resolve_css_resource_urls, sender=File)
 signals.post_save.connect(resolve_css_resource_urls, sender=Image)
+
+signals.post_save.connect(clear_urls_cache, sender=File)
+signals.post_save.connect(clear_urls_cache, sender=Image)
