@@ -33,10 +33,6 @@ def get_filerfile_cache_key(path):
     return 'filer-%s' % slugify(path)
 
 
-import logging
-logger = logging.getLogger(__name__)
-
-
 def filerfile(path):
     """django-filer has two concepts of paths:
     * the logical path: media/images/foobar.png
