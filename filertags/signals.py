@@ -4,7 +4,6 @@ import urlparse
 
 from django.core.cache import cache
 from django.db.models import signals
-from django.template.defaultfilters import slugify
 
 from filer.models.filemodels import File
 from filer.models.imagemodels import Image
