@@ -1,7 +1,8 @@
 from django import template
-from django.template.defaultfilters import stringfilter
 from django.db.models import Q
-from django.core.urlresolvers import reverse
+from django.core.cache import cache
+from django.template.defaultfilters import stringfilter, slugify
+
 from filer.models import File, Folder
 
 
@@ -28,22 +29,37 @@ def filerthumbnail(path):
         pass
 
 
+def get_filerfile_cache_key(path):
+    return 'filer-%s' % slugify(path)
+
+
 def filerfile(path):
-    ft = filerthumbnail(path)
-    if ft is None or not ft:
-        return ''
-    return ft.url
+    """django-filer has two concepts of paths:
+    * the logical path: media/images/foobar.png
+    * the actual url: filer_public/2012/11/22/foobar.png
+    This tag returns the actual url associated with the logical path.
+
+    Since most of the templates will be referencing the same
+    resources (css, js), the returned urls are being cached.
+    """
+    cache_key = get_filerfile_cache_key(path)
+    if cache.has_key(cache_key):
+        return cache.get(cache_key)
+    file_obj = filerthumbnail(path)
+    if file_obj is None or not file_obj:
+        url = ''
+    else:
+        url = file_obj.url
+    cache.set(cache_key, url)
+    return url
+
 
 def mustache(path):
     url = filerfile(path)
     return 'http://mustachify.me/?src=%s' % url
 
-def filercss(path):
-    return reverse('css-preprocessor', args=[path])
-
 
 register = template.Library()
 register.filter(stringfilter(filerthumbnail))
 register.filter(stringfilter(filerfile))
-register.filter(stringfilter(filercss))
 register.filter(stringfilter(mustache))
