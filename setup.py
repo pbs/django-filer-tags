@@ -13,7 +13,7 @@ dependency_links = [
 
 setup(
     name='django-filer-tags',
-    version='0.1',
+    version='0.2',
     description='Extra template filters and tags for filer',
     long_description = open(README_PATH, 'r').read(),
     author='Sever Banesiu',
