@@ -34,7 +34,7 @@ def _get_commented_regions(content):
 def _rewrite_file_content(filer_file, new_content):
     old_file = filer_file.file.file
     storage = filer_file.file.storage
-    new_file = storage.open(os.path.join(storage.location, old_file.name), 'w')
+    new_file = storage.open(old_file.name, 'w')
     try:
         new_file.write(new_content)
     finally:
