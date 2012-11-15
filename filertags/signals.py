@@ -13,10 +13,10 @@ from templatetags.filertags import filerfile, get_filerfile_cache_key
 
 _LOGICAL_URL_TEMPLATE = "/* logicalurl('%s') */"
 _RESOURCE_URL_TEMPLATE = "url('%s') " + _LOGICAL_URL_TEMPLATE
-
-_RESOURCE_URL_REGEX = re.compile(r"url\(['\"]?([^'\"\)]+?)['\"]?\)")
+_RESOURCE_URL_REGEX = re.compile(r"\burl\(([^\)]*)\)")
 
 _COMMENT_REGEX = re.compile(r"/\*.*?\*/")
+_ALREADY_PARSED_MARKER = '/* Filer urls already resolved */'
 
 
 def _is_in_clipboard(filer_file):
@@ -44,6 +44,12 @@ def _rewrite_file_content(filer_file, new_content):
 def _resolve_resource_urls(css_file):
     logical_folder_path = _construct_logical_folder_path(css_file)
     content = css_file.file.read()
+    if content.startswith(_ALREADY_PARSED_MARKER):
+        # this css' resource urls have already been resolved
+        # this happens when moving the css in and out of the clipboard
+        # multiple times
+        return
+
     commented_regions = _get_commented_regions(content)
     local_cache = {}
 
@@ -52,7 +58,8 @@ def _resolve_resource_urls(css_file):
             # we don't make any changes to urls that are part of commented regions
             if start < match.start() < end or start < match.end() < end:
                 return match.group()
-        url = match.group(1)
+        # strip spaces and quotes
+        url = match.group(1).strip('\'\" ')
         parsed_url = urlparse.urlparse(url)
         if parsed_url.netloc:
             # if the url is absolute, leave it unchaged
@@ -65,14 +72,20 @@ def _resolve_resource_urls(css_file):
                 filerfile(logical_file_path), logical_file_path)
         return local_cache[logical_file_path]
 
-    new_content = re.sub(_RESOURCE_URL_REGEX, change_urls, content)
+    new_content = '%s\n%s' % (
+        _ALREADY_PARSED_MARKER,
+        re.sub(_RESOURCE_URL_REGEX, change_urls, content))
     _rewrite_file_content(css_file, new_content)
 
 
 def _update_referencing_css_files(resource_file):
+    if resource_file.name:
+        resource_name = resource_file.name
+    else:
+        resource_name = resource_file.original_filename
     logical_file_path = os.path.join(
         _construct_logical_folder_path(resource_file),
-        resource_file.original_filename)
+        resource_name)
     css_files = File.objects.filter(original_filename__endswith=".css")
 
     for css in css_files:
