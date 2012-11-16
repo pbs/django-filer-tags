@@ -1,8 +1,11 @@
+import hashlib
 import os.path
 import re
+import StringIO
 import urlparse
 
 from django.core.cache import cache
+from django.core.files.uploadedfile import UploadedFile
 from django.db.models import signals
 
 from filer.models.filemodels import File
@@ -31,14 +34,24 @@ def _get_commented_regions(content):
     return [(m.start(), m.end()) for m in re.finditer(_COMMENT_REGEX, content)]
 
 
+def _is_not_on_s3(file_):
+    return isinstance(file_, UploadedFile)
+
+
 def _rewrite_file_content(filer_file, new_content):
-    old_file = filer_file.file.file
-    storage = filer_file.file.storage
-    new_file = storage.open(os.path.join(storage.location, old_file.name), 'w')
-    try:
-        new_file.write(new_content)
-    finally:
-        new_file.close()
+    if _is_not_on_s3(filer_file.file.file):
+        filer_file.file.seek(0)
+        filer_file.file.write(new_content)
+    else:
+        storage = filer_file.file.storage
+        fp = StringIO.StringIO()
+        fp.write(new_content)
+        fp.seek(0)
+        storage.save(filer_file.file.name, fp)
+    sha = hashlib.sha1()
+    sha.update(new_content)
+    filer_file.sha1 = sha.hexdigest()
+    filer_file._file_size = len(new_content)
 
 
 def _resolve_resource_urls(css_file):
@@ -162,8 +175,8 @@ def clear_urls_cache(instance, **kwargs):
     cache.delete(cache_key)
 
 
-signals.post_save.connect(resolve_css_resource_urls, sender=File)
-signals.post_save.connect(resolve_css_resource_urls, sender=Image)
+signals.pre_save.connect(resolve_css_resource_urls, sender=File)
+signals.pre_save.connect(resolve_css_resource_urls, sender=Image)
 
 signals.post_save.connect(clear_urls_cache, sender=File)
 signals.post_save.connect(clear_urls_cache, sender=Image)
