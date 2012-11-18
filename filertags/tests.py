@@ -7,8 +7,7 @@ from filer.models.foldermodels import Folder
 from filer.models.imagemodels import Image
 from filer.models.filemodels import File
 
-from filer.tests.helpers import (create_superuser, create_folder_structure,
-                                 create_image, create_clipboard_item)
+from filer.tests.helpers import create_superuser, create_image
 
 from filertags.signals import _ALREADY_PARSED_MARKER
 
