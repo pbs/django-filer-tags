@@ -1,9 +1,13 @@
+import logging
+
 from django import template
 from django.db.models import Q
 from django.core.cache import cache
 from django.template.defaultfilters import stringfilter, slugify
 
 from filer.models import File, Folder
+
+logger = logging.getLogger(__name__)
 
 
 def filerthumbnail(path):
@@ -25,8 +29,8 @@ def filerthumbnail(path):
         q |= Q(original_filename=file_name, folder=folder, name__isnull=True)
         q |= Q(name=file_name, folder=folder)
         return File.objects.get(q).file
-    except (File.DoesNotExist, Folder.DoesNotExist):
-        pass
+    except (File.DoesNotExist, File.MultipleObjectsReturned, Folder.DoesNotExist), e:
+        logger.info('%s on %s' % (e.message, path))
 
 
 def get_filerfile_cache_key(path):
