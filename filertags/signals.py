@@ -2,10 +2,10 @@ import hashlib
 import os.path
 import re
 import urlparse
+from StringIO import StringIO
 
 from django.core.cache import cache
 from django.core.files.uploadedfile import UploadedFile
-from django.core.files.base import ContentFile
 from django.db.models import signals
 
 from filer.models.filemodels import File
@@ -45,7 +45,9 @@ def _rewrite_file_content(filer_file, new_content):
     else:
         # file_name = filer_file.original_filename
         storage = filer_file.file.storage
-        fp = ContentFile(new_content, filer_file.file.name)
+        fp = StringIO()
+        fp.write(new_content)
+        fp.seek(0)
         filer_file.file.file = fp
         filer_file.file.name = storage.save(filer_file.file.name, fp)
     sha = hashlib.sha1()
