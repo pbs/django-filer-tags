@@ -39,7 +39,6 @@ def _is_in_memory(file_):
     return isinstance(file_, UploadedFile)
 
 
-
 class UnicodeContentFile(base.ContentFile):
     """
     patched due to cStringIO.StringIO constructor bug with unicode strings
@@ -49,6 +48,7 @@ class UnicodeContentFile(base.ContentFile):
         self.file = StringIO()
         self.file.writelines(content)
         self.file.reset()
+
 
 def _rewrite_file_content(filer_file, new_content):
     if _is_in_memory(filer_file.file.file):
