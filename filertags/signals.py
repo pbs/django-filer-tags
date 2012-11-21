@@ -6,6 +6,7 @@ from StringIO import StringIO
 
 from django.core.cache import cache
 from django.core.files.uploadedfile import UploadedFile
+import django.core.files.base as base
 from django.db.models import signals
 
 from filer.models.filemodels import File
@@ -38,6 +39,17 @@ def _is_in_memory(file_):
     return isinstance(file_, UploadedFile)
 
 
+
+class UnicodeContentFile(base.ContentFile):
+    """
+    patched due to cStringIO.StringIO constructor bug with unicode strings
+    """
+    def __init__(self, content, name=None):
+        super(UnicodeContentFile, self).__init__(content, name=name)
+        self.file = StringIO()
+        self.file.writelines(content)
+        self.file.reset()
+
 def _rewrite_file_content(filer_file, new_content):
     if _is_in_memory(filer_file.file.file):
         filer_file.file.seek(0)
@@ -45,9 +57,7 @@ def _rewrite_file_content(filer_file, new_content):
     else:
         # file_name = filer_file.original_filename
         storage = filer_file.file.storage
-        fp = StringIO()
-        fp.write(new_content)
-        fp.seek(0)
+        fp = UnicodeContentFile(new_content, filer_file.file.name)
         filer_file.file.file = fp
         filer_file.file.name = storage.save(filer_file.file.name, fp)
     sha = hashlib.sha1()
