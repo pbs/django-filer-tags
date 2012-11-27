@@ -1,12 +1,13 @@
+import codecs
 import hashlib
+import os
 import os.path
 import re
 import urlparse
-from StringIO import StringIO
 
 from django.core.cache import cache
+from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import UploadedFile
-import django.core.files.base as base
 from django.db.models import signals
 
 from filer.models.filemodels import File
@@ -15,12 +16,12 @@ from filer.models.imagemodels import Image
 from templatetags.filertags import filerfile, get_filerfile_cache_key
 
 
-_LOGICAL_URL_TEMPLATE = "/* logicalurl('%s') */"
-_RESOURCE_URL_TEMPLATE = "url('%s') " + _LOGICAL_URL_TEMPLATE
-_RESOURCE_URL_REGEX = re.compile(r"\burl\(([^\)]*)\)")
+_LOGICAL_URL_TEMPLATE = u"/* logicalurl('%s') */"
+_RESOURCE_URL_TEMPLATE = u"url('%s') " + _LOGICAL_URL_TEMPLATE
+_RESOURCE_URL_REGEX = re.compile(ur"\burl\(([^\)]*)\)")
 
-_COMMENT_REGEX = re.compile(r"/\*.*?\*/")
-_ALREADY_PARSED_MARKER = '/* Filer urls already resolved */'
+_COMMENT_REGEX = re.compile(ur"/\*.*?\*/")
+_ALREADY_PARSED_MARKER = u'/* Filer urls already resolved */'
 
 
 def _is_in_clipboard(filer_file):
@@ -39,15 +40,45 @@ def _is_in_memory(file_):
     return isinstance(file_, UploadedFile)
 
 
-class UnicodeContentFile(base.ContentFile):
+def _get_encoding_from_bom(content):
+    bom_to_encoding = {
+        codecs.BOM_UTF8: 'utf-8-sig',
+        codecs.BOM_UTF16_LE: 'utf-16',
+        codecs.BOM_UTF16_BE: 'utf-16',
+        codecs.BOM_UTF32_LE: 'utf-32',
+        codecs.BOM_UTF32_BE: 'utf-32'
+        }
+    for bom in bom_to_encoding:
+        if content.startswith(bom):
+            return bom_to_encoding[bom]
+    return None
+
+
+def _get_css_encoding(content, css_name):
+    """ Return a css file's character encoding using the rules from:
+    http://www.w3.org/TR/CSS2/syndata.html#charset
     """
-    patched due to cStringIO.StringIO constructor bug with unicode strings
-    """
-    def __init__(self, content, name=None):
-        super(UnicodeContentFile, self).__init__(content, name=name)
-        self.file = StringIO()
-        self.file.writelines(content)
-        self.file.reset()
+    # look for BOM
+    from_bom = _get_encoding_from_bom(content)
+    if from_bom:
+        return from_bom
+    # no BOM, look for @charset directive
+    encoding = re.match(r'@charset "([^"]*)";', content)
+    if encoding:
+        encoding = encoding.group(1)
+        try:
+            codecs.lookup(encoding)
+        except LookupError:
+            # a nicely displayed error for the end user would be nice here
+            # unfortunately you can't do that from a pre/post save hook...
+            # this will result in a 500, but this shouldn't happen often, but
+            # in case it does, the exception message will help debugging
+            raise ValueError(
+                'Css %s specifies invalid charset %s' % (css_name, encoding))
+        return encoding
+    # assume utf-8. If we're wrong, the user will get an ugly 500 ...
+    # (same problem as described in the comment above...)
+    return 'utf-8'
 
 
 def _rewrite_file_content(filer_file, new_content):
@@ -55,9 +86,8 @@ def _rewrite_file_content(filer_file, new_content):
         filer_file.file.seek(0)
         filer_file.file.write(new_content)
     else:
-        # file_name = filer_file.original_filename
         storage = filer_file.file.storage
-        fp = UnicodeContentFile(new_content, filer_file.file.name)
+        fp = ContentFile(new_content, filer_file.file.name)
         filer_file.file.file = fp
         filer_file.file.name = storage.save(filer_file.file.name, fp)
     sha = hashlib.sha1()
@@ -71,6 +101,27 @@ def _is_css(filer_file):
         return filer_file.name.endswith('.css')
     else:
         return filer_file.original_filename.endswith('.css')
+
+
+def _get_filer_file_name(file_):
+    return file_.name if file_.name else file_.original_filename
+
+
+def _insert_already_parsed_marker(content):
+    match = re.match(ur'@charset "[^"]*";', content)
+    if not match:
+        return u'%s\n%s' % (_ALREADY_PARSED_MARKER, content)
+    else:
+        # make sure that the @charset statement remains the first
+        # directive in the css
+        end = match.end()
+        return u'%s%s%s' % (
+            content[:end], _ALREADY_PARSED_MARKER, content[end:])
+
+
+def _is_already_parsed(content):
+    regex = ur'(@charset "([^"]*)";)?' + re.escape(_ALREADY_PARSED_MARKER)
+    return re.match(regex, content) is not None
 
 
 def resolve_resource_urls(instance, **kwargs):
@@ -108,7 +159,9 @@ def resolve_resource_urls(instance, **kwargs):
     if _is_in_clipboard(css_file):
         return
     content = css_file.file.read()
-    if content.startswith(_ALREADY_PARSED_MARKER):
+    encoding = _get_css_encoding(content, _get_filer_file_name(css_file))
+    content = content.decode(encoding)
+    if _is_already_parsed(content):
         # this css' resource urls have already been resolved
         # this happens when moving the css in and out of the clipboard
         # multiple times
@@ -137,9 +190,9 @@ def resolve_resource_urls(instance, **kwargs):
                 filerfile(logical_file_path), logical_file_path)
         return local_cache[logical_file_path]
 
-    new_content = '%s\n%s' % (
-        _ALREADY_PARSED_MARKER,
+    new_content = _insert_already_parsed_marker(
         re.sub(_RESOURCE_URL_REGEX, change_urls, content))
+    new_content = new_content.encode(encoding)
     _rewrite_file_content(css_file, new_content)
 
 
@@ -161,29 +214,29 @@ def update_referencing_css_files(instance, **kwargs):
     resource_file = instance
     if _is_in_clipboard(resource_file):
         return
-    if resource_file.name:
-        resource_name = resource_file.name
-    else:
-        resource_name = resource_file.original_filename
+    resource_name = _get_filer_file_name(resource_file)
     logical_file_path = os.path.join(
         _construct_logical_folder_path(resource_file),
         resource_name)
     css_files = File.objects.filter(original_filename__endswith=".css")
     for css in css_files:
         logical_url_snippet = _LOGICAL_URL_TEMPLATE % logical_file_path
-        url_updating_regex = "%s %s" % (
+        url_updating_regex = u"%s %s" % (
             _RESOURCE_URL_REGEX.pattern, re.escape(logical_url_snippet))
-        repl = "url('%s') %s" % (resource_file.url, logical_url_snippet)
+        repl = u"url('%s') %s" % (resource_file.url, logical_url_snippet)
         try:
-            content = css.file.read()
+            old_content = css.file.read()
+            encoding = _get_css_encoding(old_content, _get_filer_file_name(css))
+            content = old_content.decode(encoding)
             new_content = re.sub(url_updating_regex, repl, content)
+            new_content = new_content.encode(encoding)
         except IOError:
             # the filer database might have File entries that reference
             # files no longer phisically exist
             # TODO: find the root cause of missing filer files
             continue
         else:
-            if content != new_content:
+            if old_content != new_content:
                 _rewrite_file_content(css, new_content)
                 css.save()
 
