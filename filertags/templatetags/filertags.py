@@ -1,4 +1,5 @@
 import logging
+import hashlib
 
 from django import template
 from django.db.models import Q
@@ -34,7 +35,9 @@ def filerthumbnail(path):
 
 
 def get_filerfile_cache_key(path):
-    return 'filer-%s' % slugify(path)
+    # since the path might be longer than 250 characters
+    # (max lenght allowed by memcached), we use a md5 hash of the path
+    return '%s-%d-%s' % ('filer-', len(path), hashlib.md5(path).hexdigest())
 
 
 def filerfile(path):
