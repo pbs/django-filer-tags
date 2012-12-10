@@ -116,7 +116,7 @@ def resolve_resource_urls(instance, **kwargs):
         # strip spaces and quotes
         url = match.group(1).strip('\'\" ')
         parsed_url = urlparse.urlparse(url)
-        if parsed_url.netloc or parsed_url.scheme not in ['', 'http']:
+        if parsed_url.netloc or parsed_url.scheme not in ['', 'http', 'https']:
             # ignore everyghing which is not served through http
             # or explicitly specifies a hostname; these are resources
             # not served from filer
