@@ -122,7 +122,7 @@ def _is_already_parsed(content):
 
 
 def resolve_resource_urls(instance, **kwargs):
-    """Post save hook for css files uploaded to filer.
+    """Pre save hook for css files uploaded to filer.
     It's purpose is to resolve the actual urls of resources referenced
     in css files.
 
@@ -176,8 +176,10 @@ def resolve_resource_urls(instance, **kwargs):
         # strip spaces and quotes
         url = match.group(1).strip('\'\" ')
         parsed_url = urlparse.urlparse(url)
-        if parsed_url.netloc:
-            # if the url is absolute, leave it unchaged
+        if parsed_url.netloc or parsed_url.scheme not in ['', 'http', 'https']:
+            # ignore everyghing which is not served through http
+            # or explicitly specifies a hostname; these are resources
+            # not served from filer
             return match.group()
         relative_path = url
         logical_file_path = os.path.normpath(
