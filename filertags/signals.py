@@ -97,10 +97,7 @@ def _rewrite_file_content(filer_file, new_content):
 
 
 def _is_css(filer_file):
-    if filer_file.name:
-        return filer_file.name.endswith('.css')
-    else:
-        return filer_file.original_filename.endswith('.css')
+    return _get_filer_file_name.endswith('.css')
 
 
 def _get_filer_file_name(file_):
