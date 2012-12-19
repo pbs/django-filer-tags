@@ -71,8 +71,8 @@ def _get_css_encoding(content, css_name):
         except LookupError:
             # a nicely displayed error for the end user would be nice here
             # unfortunately you can't do that from a pre/post save hook...
-            # this will result in a 500, but this shouldn't happen often, but
-            # in case it does, the exception message will help debugging
+            # this will result in a 500. This shouldn't happen often, but
+            # in case it does, the exception message will at least help debugging
             raise ValueError(
                 'Css %s specifies invalid charset %s' % (css_name, encoding))
         return encoding
@@ -90,6 +90,13 @@ def _rewrite_file_content(filer_file, new_content):
         fp = ContentFile(new_content, filer_file.file.name)
         filer_file.file.file = fp
         filer_file.file.name = storage.save(filer_file.file.name, fp)
+    # all code in filer.filemodels.File.save which percedes the call to
+    # super(File, self).save will be executed BEFORE the resolve_resource_urls
+    # pre_save hook. This means that all attributes that are computed based
+    # on the file's content (for now: hash and file size) will have to be reset here.
+    # This is ugly since any new file content related attribute that
+    # might be added in the future verisons of filer will require an update
+    # of this function as well...
     sha = hashlib.sha1()
     sha.update(new_content)
     filer_file.sha1 = sha.hexdigest()
@@ -130,7 +137,8 @@ def resolve_resource_urls(instance, **kwargs):
     * the logical url: media/images/foobar.png
     * the actual url: filer_public/2012/11/22/foobar.png
 
-    The css as written by the an end user uses logical urls:
+    Example: the css as written by the an end user uses logical urls:
+
     .button.nice {
         background: url('../images/misc/foobar.png');
         -moz-box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
@@ -139,16 +147,18 @@ def resolve_resource_urls(instance, **kwargs):
     In order for the resources to be found, the logical urls need to be
     replaced with the actual urls.
 
-    Whenever a css is saved it parses the content and rewrites all logical
+    Whenever a css is saved this signal parses the content and rewrites all logical
     urls to their actual urls; the logical url is still being saved
-    as a comment that follows the actual url. This comment is needed for
-    the behaviour described at point 2.
+    as a comment that follows the actual url. This comment is needed by
+    update_referencing_css_files (see it's docstring for details)
 
-    After url rewriting the above css snippet will look like:
+    After url rewriting the above css example will look like:
+
     .button.nice {
        background: url('filer_public/2012/11/22/foobar.png') /* logicalurl('media/images/misc/foobar.png') /* ;
        -moz-box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
     }
+
     """
     if not _is_css(instance):
         return
@@ -201,7 +211,7 @@ def update_referencing_css_files(instance, **kwargs):
     The purpose of this hook is to update the actual url in all css files that
     reference the resource pointed by 'instance'.
 
-    References are found by looking for comments such as:
+    References are found by parsing all css files and looking for comments such as:
     /* logicalurl('media/images/misc/foobar.png') */
 
     If the url between parentheses matches the logical url of the resource
