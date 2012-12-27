@@ -29,7 +29,7 @@ def _is_in_clipboard(filer_file):
 
 
 def _construct_logical_folder_path(filer_file):
-    return os.path.join(*(folder.name for folder in filer_file.logical_path))
+    return '/%s/' % '/'.join((folder.name for folder in filer_file.logical_path))
 
 
 def _get_commented_regions(content):
@@ -134,7 +134,7 @@ def resolve_resource_urls(instance, **kwargs):
     in css files.
 
     django-filer has two concepts of urls:
-    * the logical url: media/images/foobar.png
+    * the logical url: /media/images/foobar.png
     * the actual url: filer_public/2012/11/22/foobar.png
 
     Example: the css as written by the an end user uses logical urls:
@@ -155,7 +155,7 @@ def resolve_resource_urls(instance, **kwargs):
     After url rewriting the above css example will look like:
 
     .button.nice {
-       background: url('filer_public/2012/11/22/foobar.png') /* logicalurl('media/images/misc/foobar.png') /* ;
+       background: url('filer_public/2012/11/22/foobar.png') /* logicalurl('/media/images/misc/foobar.png') /* ;
        -moz-box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
     }
 
@@ -191,9 +191,7 @@ def resolve_resource_urls(instance, **kwargs):
             # or explicitly specifies a hostname; these are resources
             # not served from filer
             return match.group()
-        relative_path = url
-        logical_file_path = os.path.normpath(
-            os.path.join(logical_folder_path, relative_path))
+        logical_file_path = urlparse.urljoin(logical_folder_path, url)
         if not logical_file_path in local_cache:
             local_cache[logical_file_path] = _RESOURCE_URL_TEMPLATE % (
                 filerfile(logical_file_path), logical_file_path)
@@ -212,7 +210,7 @@ def update_referencing_css_files(instance, **kwargs):
     reference the resource pointed by 'instance'.
 
     References are found by parsing all css files and looking for comments such as:
-    /* logicalurl('media/images/misc/foobar.png') */
+    /* logicalurl('/media/images/misc/foobar.png') */
 
     If the url between parentheses matches the logical url of the resource
     being saved, the actual url (which percedes the comment)
@@ -224,7 +222,7 @@ def update_referencing_css_files(instance, **kwargs):
     if _is_in_clipboard(resource_file):
         return
     resource_name = _get_filer_file_name(resource_file)
-    logical_file_path = os.path.join(
+    logical_file_path = urlparse.urljoin(
         _construct_logical_folder_path(resource_file),
         resource_name)
     css_files = File.objects.filter(original_filename__endswith=".css")
@@ -252,7 +250,7 @@ def update_referencing_css_files(instance, **kwargs):
 
 def clear_urls_cache(instance, **kwargs):
     """Clears urls cached by the filerfile tag. """
-    logical_file_path = os.path.join(
+    logical_file_path = urlparse.urljoin(
         _construct_logical_folder_path(instance),
         instance.original_filename)
     cache_key = get_filerfile_cache_key(logical_file_path)
