@@ -1,7 +1,5 @@
 import codecs
 import hashlib
-import os
-import os.path
 import re
 import urlparse
 

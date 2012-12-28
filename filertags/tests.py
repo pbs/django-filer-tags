@@ -7,8 +7,7 @@ from django.test import TestCase
 
 from filer.models.filemodels import File
 from filer.models.foldermodels import Folder
-from filer.tests.helpers import (create_superuser, create_folder_structure,
-                                 create_image, create_clipboard_item)
+from filer.tests.helpers import create_superuser
 
 from filertags.signals import _ALREADY_PARSED_MARKER, _LOGICAL_URL_TEMPLATE
 
@@ -102,4 +101,29 @@ class CssRewriteTest(TestCase):
 }
 """)
         self._verify_css_is_corectly_rewritten(css)
+
+    def test_commented_url(self):
+        original_content = """\
+.pledge-block {
+/*    background: url(  ../images/foobar.png  );  */
+}
+"""
+        css = self.create_file('relative_url_to_image.css', self.producer_css,
+                               content=original_content)
+        css_content = open(css.path).read()
+        # css remains unchanged since the url statement is within a comment
+        expected_content = '%s\n%s' % (_ALREADY_PARSED_MARKER, original_content)
+        self.assertEqual(expected_content, css_content)
+
+    def test_non_http_schema(self):
+        original_content = """\
+.pledge-block {
+    background: url(data:image/png;base64,iVBORw0KGgoAA);
+}
+"""
+        css = self.create_file('relative_url_to_image.css', self.producer_css,
+                               content=original_content)
+        css_content = open(css.path).read()
+        expected_content = '%s\n%s' % (_ALREADY_PARSED_MARKER, original_content)
+        self.assertEqual(expected_content, css_content)
 
