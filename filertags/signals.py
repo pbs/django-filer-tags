@@ -248,6 +248,8 @@ def update_referencing_css_files(instance, **kwargs):
 
 def clear_urls_cache(instance, **kwargs):
     """Clears urls cached by the filerfile tag. """
+    if _is_in_clipboard(instance):
+        return
     logical_file_path = urlparse.urljoin(
         _construct_logical_folder_path(instance),
         instance.original_filename)

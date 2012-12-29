@@ -1,5 +1,6 @@
 import os.path
 import re
+import shutil
 
 from django.core.cache import cache
 from django.core.files.base import File as DjangoFile, ContentFile
@@ -7,12 +8,17 @@ from django.test import TestCase
 
 from filer.models.filemodels import File
 from filer.models.foldermodels import Folder
+from filer.settings import FILER_PUBLICMEDIA_STORAGE
 from filer.tests.helpers import create_superuser
 
 from filertags.signals import _ALREADY_PARSED_MARKER, _LOGICAL_URL_TEMPLATE
 
 
 class CssRewriteTest(TestCase):
+
+    def _get_test_usermedia_location(self):
+        HERE = os.path.dirname(os.path.realpath(__file__))
+        return os.path.join(HERE, 'tmp_user_media')
 
     def setUp(self):
         self.superuser = create_superuser()
@@ -21,9 +27,15 @@ class CssRewriteTest(TestCase):
         producer = Folder.objects.create(name='producer', parent=media_folder)
         self.producer_css = Folder.objects.create(name='css', parent=producer)
         self.producer_images = Folder.objects.create(name='images', parent=producer)
+        self.usual_location = FILER_PUBLICMEDIA_STORAGE.location
+        # all files generated during these tests are written to ./tmp_user_media
+        # and get deleted afterwards (see tearDown)
+        FILER_PUBLICMEDIA_STORAGE.location = self._get_test_usermedia_location()
 
     def tearDown(self):
         cache.clear()
+        shutil.rmtree(FILER_PUBLICMEDIA_STORAGE.location)
+        FILER_PUBLICMEDIA_STORAGE.location = self.usual_location
 
     def create_file(self, name, folder, content=None):
         if content is None:
@@ -36,7 +48,6 @@ class CssRewriteTest(TestCase):
                                    original_filename=name,
                                    file=file_obj,
                                    folder=folder)
-
 
     def test_abslute_url_css_before_image(self):
         css = self.create_file('absolute_url_to_image.css', self.producer_css,
