@@ -89,6 +89,7 @@ def _rewrite_file_content(filer_file, new_content):
         storage = filer_file.file.storage
         fp = ContentFile(new_content, filer_file.file.name)
         filer_file.file.file = fp
+        storage.delete(filer_file.file.name)
         filer_file.file.name = storage.save(filer_file.file.name, fp)
     # all code in filer.filemodels.File.save which percedes the call to
     # super(File, self).save will be executed BEFORE the resolve_resource_urls
