@@ -1,3 +1,4 @@
+import hashlib
 import os.path
 import re
 import shutil
@@ -138,3 +139,16 @@ class CssRewriteTest(TestCase):
         expected_content = '%s\n%s' % (_ALREADY_PARSED_MARKER, original_content)
         self.assertEqual(expected_content, css_content)
 
+    def test_file_size_and_hash(self):
+        image = self.create_file('foobar.png', self.producer_images)
+        css = self.create_file('relative_url_to_image.css', self.producer_css,
+                               content="""\
+.pledge-block {
+    background: url('../images/foobar.png');
+}
+""")
+        css_content = open(css.path).read()
+        self.assertEqual(len(css_content), css.size)
+        sha = hashlib.sha1()
+        sha.update(css_content)
+        self.assertEqual(sha.hexdigest(), css.sha1)
