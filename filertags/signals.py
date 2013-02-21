@@ -39,7 +39,6 @@ def _is_in_memory(file_):
 
 
 def _get_encoding_from_bom(content):
-    import ipdb; ipdb.set_trace()
     bom_to_encoding = (
         (codecs.BOM_UTF32_LE, 'utf-32'),
         (codecs.BOM_UTF32_BE, 'utf-32'),
