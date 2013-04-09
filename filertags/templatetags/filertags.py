@@ -32,6 +32,7 @@ def filerthumbnail(path):
         return File.objects.get(q).file
     except (File.DoesNotExist, File.MultipleObjectsReturned, Folder.DoesNotExist), e:
         logger.info('%s on %s' % (e.message, path))
+        return None
 
 
 def get_filerfile_cache_key(path):

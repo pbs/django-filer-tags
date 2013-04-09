@@ -201,6 +201,29 @@ def resolve_resource_urls(instance, **kwargs):
     _rewrite_file_content(css_file, new_content)
 
 
+def update_url_statements_in_css(css, resource_file, logical_file_path):
+    logical_url_snippet = _LOGICAL_URL_TEMPLATE % logical_file_path
+    url_updating_regex = u"%s %s" % (
+        _RESOURCE_URL_REGEX.pattern, re.escape(logical_url_snippet))
+    repl = u"url('%s') %s" % (resource_file.url, logical_url_snippet)
+    try:
+        css.file.seek(0)
+        old_content = css.file.read()
+        encoding = _get_css_encoding(old_content, _get_filer_file_name(css))
+        content = old_content.decode(encoding)
+        new_content = re.sub(url_updating_regex, repl, content)
+        new_content = new_content.encode(encoding)
+    except IOError:
+        # the filer database might have File entries that reference
+        # files no longer phisically exist
+        # TODO: find the root cause of missing filer files
+        return
+    else:
+        if old_content != new_content:
+            _rewrite_file_content(css, new_content)
+            css.save()
+
+
 def update_referencing_css_files(instance, **kwargs):
     """Post save hook for any resource uploaded to filer that
     might be referenced by a css.
@@ -225,25 +248,7 @@ def update_referencing_css_files(instance, **kwargs):
         resource_name)
     css_files = File.objects.filter(original_filename__endswith=".css")
     for css in css_files:
-        logical_url_snippet = _LOGICAL_URL_TEMPLATE % logical_file_path
-        url_updating_regex = u"%s %s" % (
-            _RESOURCE_URL_REGEX.pattern, re.escape(logical_url_snippet))
-        repl = u"url('%s') %s" % (resource_file.url, logical_url_snippet)
-        try:
-            old_content = css.file.read()
-            encoding = _get_css_encoding(old_content, _get_filer_file_name(css))
-            content = old_content.decode(encoding)
-            new_content = re.sub(url_updating_regex, repl, content)
-            new_content = new_content.encode(encoding)
-        except IOError:
-            # the filer database might have File entries that reference
-            # files no longer phisically exist
-            # TODO: find the root cause of missing filer files
-            continue
-        else:
-            if old_content != new_content:
-                _rewrite_file_content(css, new_content)
-                css.save()
+        update_url_statements_in_css(css, resource_file, logical_file_path)
 
 
 def clear_urls_cache(instance, **kwargs):
@@ -257,9 +262,9 @@ def clear_urls_cache(instance, **kwargs):
     cache.delete(cache_key)
 
 
-signals.pre_save.connect(resolve_resource_urls, sender=File)
-signals.post_save.connect(update_referencing_css_files, sender=File)
-signals.post_save.connect(update_referencing_css_files, sender=Image)
+# signals.pre_save.connect(resolve_resource_urls, sender=File)
+# signals.post_save.connect(update_referencing_css_files, sender=File)
+# signals.post_save.connect(update_referencing_css_files, sender=Image)
 
-signals.post_save.connect(clear_urls_cache, sender=File)
-signals.post_save.connect(clear_urls_cache, sender=Image)
+# signals.post_save.connect(clear_urls_cache, sender=File)
+# signals.post_save.connect(clear_urls_cache, sender=Image)
