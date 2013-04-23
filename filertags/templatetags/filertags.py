@@ -1,12 +1,14 @@
 import logging
-import hashlib
 
 from django import template
+from django.conf import settings
 from django.db.models import Q
-from django.core.cache import cache
-from django.template.defaultfilters import stringfilter, slugify
+from django.template.defaultfilters import stringfilter
 
 from filer.models import File, Folder
+# TODO: this is ugly: the ..settings is because the toplevel package
+#    name has the same name as this module; should probably rename the toplevel package?
+from ..settings import LOGICAL_EQ_ACTUAL_URL
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +34,12 @@ def filerthumbnail(path):
         return File.objects.get(q).file
     except (File.DoesNotExist, File.MultipleObjectsReturned, Folder.DoesNotExist), e:
         logger.info('%s on %s' % (e.message, path))
+        return None
 
 
-def get_filerfile_cache_key(path):
-    # since the path might be longer than 250 characters
-    # (max lenght allowed by memcached), we use a md5 hash of the path
-    return '%s-%d-%s' % ('filer-', len(path), hashlib.md5(path).hexdigest())
+def get_possible_paths(path):
+    return ['%s/%s' % (storage['main']['UPLOAD_TO_PREFIX'], path)
+            for storage in settings.FILER_STORAGES.values()]
 
 
 def filerfile(path):
@@ -45,20 +47,16 @@ def filerfile(path):
     * the logical path: media/images/foobar.png
     * the actual url: filer_public/2012/11/22/foobar.png
     This tag returns the actual url associated with the logical path.
-
-    Since most of the templates will be referencing the same
-    resources (css, js), the returned urls are being cached.
     """
-    cache_key = get_filerfile_cache_key(path)
-    if cache.has_key(cache_key):
-        return cache.get(cache_key)
-    file_obj = filerthumbnail(path)
-    if file_obj is None or not file_obj:
-        url = ''
+    if LOGICAL_EQ_ACTUAL_URL:
+        try:
+            return File.objects.get(file__in=get_possible_paths(path)).url
+        except (File.DoesNotExist, File.MultipleObjectsReturned), e:
+            logger.info('%s on %s' % (e.message, path))
+            return path
     else:
-        url = file_obj.url
-    cache.set(cache_key, url)
-    return url
+        file_obj = filerthumbnail(path)
+        return file_obj.url if file_obj else ''
 
 
 def mustache(path):
