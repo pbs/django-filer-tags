@@ -1,11 +1,11 @@
 import logging
 
 from django import template
-from django.conf import settings
 from django.db.models import Q
 from django.template.defaultfilters import stringfilter
 
 from filer.models import File, Folder
+import filer.settings as filer_settings
 # TODO: this is ugly: the ..settings is because the toplevel package
 #    name has the same name as this module; should probably rename the toplevel package?
 from ..settings import LOGICAL_EQ_ACTUAL_URL
@@ -39,7 +39,7 @@ def filerthumbnail(path):
 
 def get_possible_paths(path):
     return ['%s/%s' % (storage['main']['UPLOAD_TO_PREFIX'], path)
-            for storage in settings.FILER_STORAGES.values()]
+            for storage in filer_settings.FILER_STORAGES.values()]
 
 
 def filerfile(path):

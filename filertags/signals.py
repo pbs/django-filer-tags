@@ -250,8 +250,17 @@ def update_referencing_css_files(instance, **kwargs):
         update_url_statements_in_css(css, resource_file, logical_file_path)
 
 
-if not LOGICAL_EQ_ACTUAL_URL:
+def attach_css_rewriting_rules():
     signals.pre_save.connect(resolve_resource_urls, sender=File)
     signals.post_save.connect(update_referencing_css_files, sender=File)
     signals.post_save.connect(update_referencing_css_files, sender=Image)
 
+def detach_css_rewriting_rules():
+    signals.pre_save.disconnect(resolve_resource_urls, sender=File)
+    signals.post_save.disconnect(update_referencing_css_files, sender=File)
+    signals.post_save.disconnect(update_referencing_css_files, sender=Image)
+    
+
+
+if not LOGICAL_EQ_ACTUAL_URL:
+    attach_css_rewriting_rules()

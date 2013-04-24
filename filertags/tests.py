@@ -12,7 +12,8 @@ from filer.models.foldermodels import Folder
 from filer.settings import FILER_PUBLICMEDIA_STORAGE
 from filer.tests.helpers import create_superuser
 
-from filertags.signals import _ALREADY_PARSED_MARKER, _LOGICAL_URL_TEMPLATE
+from filertags.signals import _ALREADY_PARSED_MARKER, _LOGICAL_URL_TEMPLATE,\
+    attach_css_rewriting_rules, detach_css_rewriting_rules
 
 
 class CssRewriteTest(TestCase):
@@ -22,6 +23,7 @@ class CssRewriteTest(TestCase):
         return os.path.join(HERE, 'tmp_user_media')
 
     def setUp(self):
+        attach_css_rewriting_rules()
         self.superuser = create_superuser()
         self.client.login(username='admin', password='secret')
         media_folder = Folder.objects.create(name='media')
@@ -37,6 +39,7 @@ class CssRewriteTest(TestCase):
         cache.clear()
         shutil.rmtree(FILER_PUBLICMEDIA_STORAGE.location)
         FILER_PUBLICMEDIA_STORAGE.location = self.usual_location
+        detach_css_rewriting_rules()
 
     def create_file(self, name, folder, content=None):
         if content is None:

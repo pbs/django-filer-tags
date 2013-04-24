@@ -1,6 +1,6 @@
-from django.conf import settings
+import filer.settings
 
-filer_storages = getattr(settings, 'FILER_STORAGES', {})
+filer_storages = getattr(filer.settings, 'FILER_STORAGES', {})
 
 LOGICAL_EQ_ACTUAL_URL = all(
     storage['main']['UPLOAD_TO'] == 'filer.utils.generate_filename.by_path'
