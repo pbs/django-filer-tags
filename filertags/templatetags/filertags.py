@@ -48,6 +48,7 @@ def filerfile(path):
     * the actual url: filer_public/2012/11/22/foobar.png
     This tag returns the actual url associated with the logical path.
     """
+    path = path.strip('/')
     if LOGICAL_EQ_ACTUAL_URL:
         try:
             return File.objects.get(file__in=get_possible_paths(path)).url
