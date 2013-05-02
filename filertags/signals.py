@@ -221,6 +221,8 @@ def update_url_statements_in_css(css, resource_file, logical_file_path):
         if old_content != new_content:
             _rewrite_file_content(css, new_content)
             css.save()
+    finally:
+        css.file.close()
 
 
 def update_referencing_css_files(instance, **kwargs):
@@ -255,11 +257,11 @@ def attach_css_rewriting_rules():
     signals.post_save.connect(update_referencing_css_files, sender=File)
     signals.post_save.connect(update_referencing_css_files, sender=Image)
 
+
 def detach_css_rewriting_rules():
     signals.pre_save.disconnect(resolve_resource_urls, sender=File)
     signals.post_save.disconnect(update_referencing_css_files, sender=File)
     signals.post_save.disconnect(update_referencing_css_files, sender=Image)
-    
 
 
 if not LOGICAL_EQ_ACTUAL_URL:
