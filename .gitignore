@@ -4,3 +4,4 @@ dist
 *.egg
 build
 echo .tox
+*.pyo
