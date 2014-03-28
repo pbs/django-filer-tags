@@ -44,7 +44,7 @@ class CssRewriteTest(TestCase):
     def create_file(self, name, folder, content=None):
         if content is None:
             file_obj = DjangoFile(
-                open(os.path.join(os.path.dirname(__file__), 'test_files', name)),
+                open(os.path.join(os.path.dirname(__file__), 'files', name)),
                 name=name)
         else:
             file_obj = ContentFile(content, name)
