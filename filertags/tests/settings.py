@@ -13,9 +13,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.staticfiles',
     'filer',
+    'mptt',
     'easy_thumbnails'
 ]
 
+SECRET_KEY = 'secret'
 import filer.settings
 
 filer_storages = getattr(filer.settings, 'FILER_STORAGES', {})
