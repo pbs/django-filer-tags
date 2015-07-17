@@ -6,6 +6,7 @@ README_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)),
                            'README.rst')
 
 dependencies = [
+    'django-filer',
 ]
 
 dependency_links = [
@@ -23,5 +24,4 @@ setup(
     include_package_data=True,
     install_requires = dependencies,
     dependency_links = dependency_links,
-    setup_requires = ['s3sourceuploader',],
 )

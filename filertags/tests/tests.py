@@ -3,6 +3,7 @@ import os.path
 import re
 import shutil
 
+from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.files.base import File as DjangoFile, ContentFile
 from django.test import TestCase
@@ -10,7 +11,6 @@ from django.test import TestCase
 from filer.models.filemodels import File
 from filer.models.foldermodels import Folder
 from filer.settings import FILER_PUBLICMEDIA_STORAGE
-from filer.tests.helpers import create_superuser
 
 from filertags.signals import _ALREADY_PARSED_MARKER, _LOGICAL_URL_TEMPLATE,\
     attach_css_rewriting_rules, detach_css_rewriting_rules
@@ -24,7 +24,8 @@ class CssRewriteTest(TestCase):
 
     def setUp(self):
         attach_css_rewriting_rules()
-        self.superuser = create_superuser()
+        self.superuser = User.objects.create_superuser(
+            'admin', 'admin@filertags.com', 'secret')
         self.client.login(username='admin', password='secret')
         media_folder = Folder.objects.create(name='media')
         producer = Folder.objects.create(name='producer', parent=media_folder)
