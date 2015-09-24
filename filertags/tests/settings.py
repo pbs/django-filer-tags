@@ -17,6 +17,23 @@ INSTALLED_APPS = [
     'easy_thumbnails'
 ]
 
+CMS_TEMPLATES = (
+        ('Example', 'Example'),
+)
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'OPTIONS': {
+            'context_processors': (
+                "django.template.context_processors.request",
+            ),
+        },
+    },
+]
+CMS_CACHE_PREFIX = 'cms_prefix'
+CMS_MODERATOR = True
+CMS_PERMISSION = True
+
 SECRET_KEY = 'secret'
 import filer.settings
 
