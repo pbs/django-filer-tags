@@ -1,6 +1,16 @@
 CHANGELOG
 =========
 
+Revision 1ab0e23 (24.09.2015, 13:45 UTC)
+----------------------------------------
+
+No new issues.
+
+* Misc commits
+
+  * Update tox.ini. Restrict django-filer for tests.
+  * Django 1.8 upgrade: updated tox django version
+
 Revision d51c604 (17.07.2015, 14:09 UTC)
 ----------------------------------------
 
