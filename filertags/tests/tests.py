@@ -14,13 +14,28 @@ from filer.settings import FILER_PUBLICMEDIA_STORAGE
 
 from filertags.signals import _ALREADY_PARSED_MARKER, _LOGICAL_URL_TEMPLATE,\
     attach_css_rewriting_rules, detach_css_rewriting_rules
+from filertags.templatetags.filertags import find_hashed_file
+
+
+def create_filer_file(name, folder, content=None, owner=None):
+    if content is None:
+        file_obj = DjangoFile(
+            open(os.path.join(os.path.dirname(__file__), 'files', name)),
+            name=name)
+    else:
+        file_obj = ContentFile(content, name)
+    return File.objects.create(owner=owner,
+                               original_filename=name,
+                               file=file_obj,
+                               folder=folder)
+
+
+def _get_test_usermedia_location():
+    HERE = os.path.dirname(os.path.realpath(__file__))
+    return os.path.join(HERE, 'tmp_user_media')
 
 
 class CssRewriteTest(TestCase):
-
-    def _get_test_usermedia_location(self):
-        HERE = os.path.dirname(os.path.realpath(__file__))
-        return os.path.join(HERE, 'tmp_user_media')
 
     def setUp(self):
         attach_css_rewriting_rules()
@@ -34,7 +49,7 @@ class CssRewriteTest(TestCase):
         self.usual_location = FILER_PUBLICMEDIA_STORAGE.location
         # all files generated during these tests are written to ./tmp_user_media
         # and get deleted afterwards (see tearDown)
-        FILER_PUBLICMEDIA_STORAGE.location = self._get_test_usermedia_location()
+        FILER_PUBLICMEDIA_STORAGE.location = _get_test_usermedia_location()
 
     def tearDown(self):
         cache.clear()
@@ -43,16 +58,7 @@ class CssRewriteTest(TestCase):
         detach_css_rewriting_rules()
 
     def create_file(self, name, folder, content=None):
-        if content is None:
-            file_obj = DjangoFile(
-                open(os.path.join(os.path.dirname(__file__), 'files', name)),
-                name=name)
-        else:
-            file_obj = ContentFile(content, name)
-        return File.objects.create(owner=self.superuser,
-                                   original_filename=name,
-                                   file=file_obj,
-                                   folder=folder)
+        return create_filer_file(name, folder, content, owner=self.superuser)
 
     def test_abslute_url_css_before_image(self):
         css = self.create_file('absolute_url_to_image.css', self.producer_css,
@@ -156,3 +162,30 @@ class CssRewriteTest(TestCase):
         sha = hashlib.sha1()
         sha.update(css_content)
         self.assertEqual(sha.hexdigest(), css.sha1)
+
+
+class TestMatchFiles(TestCase):
+
+    def setUp(self):
+        self.usual_location = FILER_PUBLICMEDIA_STORAGE.location
+        FILER_PUBLICMEDIA_STORAGE.location = _get_test_usermedia_location()
+
+    def tearDown(self):
+        cache.clear()
+        shutil.rmtree(FILER_PUBLICMEDIA_STORAGE.location)
+        FILER_PUBLICMEDIA_STORAGE.location = self.usual_location
+
+    def test_find_hashed_file(self):
+        media = Folder.objects.create(name='media')
+        folder = Folder.objects.create(name='folder', parent=media)
+        subfolder = Folder.objects.create(name='folder', parent=folder)
+        create_filer_file("test.txt", media, content="test")
+        create_filer_file("test3.txt", folder, content="test")
+        create_filer_file("_test.txt", folder, content="test")
+        create_filer_file("test_test.txt", folder, content="test")
+        create_filer_file("test.txt", subfolder, content="test")
+
+        search_path = '/media/folder/test.txt'
+        self.assertIsNone(find_hashed_file(search_path))
+        searched_file = create_filer_file("test.txt", folder, content="test")
+        self.assertEquals(find_hashed_file(search_path), searched_file)

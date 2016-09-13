@@ -13,6 +13,12 @@ from ..settings import LOGICAL_EQ_ACTUAL_URL
 logger = logging.getLogger(__name__)
 
 
+def q_matches_name(file_name):
+    return (Q(original_filename=file_name, name='') |
+            Q(original_filename=file_name, name__isnull=True) |
+            Q(name=file_name))
+
+
 def filerthumbnail(path):
     parts = path.strip('/').split('/')
     folder_names = parts[:-1]
@@ -22,16 +28,13 @@ def filerthumbnail(path):
 
     current_parent = None
     try:
-        for f in folder_names:
+        for folder_name in folder_names:
             if not current_parent:
-                folder = Folder.objects.get(name=f, parent__isnull=True)
+                folder = Folder.objects.get(name=folder_name, parent__isnull=True)
             else:
-                folder = Folder.objects.get(name=f, parent=current_parent)
+                folder = Folder.objects.get(name=folder_name, parent=current_parent)
             current_parent = folder
-        q = Q(original_filename=file_name, folder=folder, name='')
-        q |= Q(original_filename=file_name, folder=folder, name__isnull=True)
-        q |= Q(name=file_name, folder=folder)
-        return File.objects.get(q).file
+        return File.objects.get(q_matches_name(file_name), Q(folder=folder)).file
     except (File.DoesNotExist, File.MultipleObjectsReturned, Folder.DoesNotExist), e:
         logger.info('%s on %s' % (e.message, path))
         return None
@@ -40,6 +43,18 @@ def filerthumbnail(path):
 def get_possible_paths(path):
     return ['%s/%s' % (storage['main']['UPLOAD_TO_PREFIX'], path)
             for storage in filer_settings.FILER_STORAGES.values()]
+
+
+def find_hashed_file(path):
+    path = path.strip('/')
+    slash_index = path.rfind('/')
+    folder_slug, file_name = path[:slash_index+1], path[slash_index+1:]
+    for folder_path in get_possible_paths(folder_slug):
+        slash_count = folder_path.count('/')
+        candidates = File.objects.filter(q_matches_name(file_name), file__startswith=folder_path)
+        for candidate in candidates:
+            if str(candidate.file).count('/') == slash_count:
+                return candidate
 
 
 def filerfile(path):
@@ -53,6 +68,9 @@ def filerfile(path):
         try:
             return File.objects.get(file__in=get_possible_paths(path)).url
         except (File.DoesNotExist, File.MultipleObjectsReturned), e:
+            filer_file = find_hashed_file(path)
+            if filer_file:
+                return filer_file.url
             logger.info('%s on %s' % (e.message, path))
             return path
     else:
