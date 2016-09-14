@@ -35,6 +35,25 @@ CMS_MODERATOR = True
 CMS_PERMISSION = True
 
 SECRET_KEY = 'secret'
+
+FILER_STORAGES = {
+    'public': {
+        'main': {
+            'ENGINE': 'django.core.files.storage.FileSystemStorage',
+            'OPTIONS': {},
+            'UPLOAD_TO': 'filer.utils.generate_filename.by_path',
+            'UPLOAD_TO_PREFIX': 'filer_public',
+        },
+        'thumbnails': {
+            'ENGINE': 'django.core.files.storage.FileSystemStorage',
+            'OPTIONS': {},
+            'THUMBNAIL_OPTIONS': {
+                'base_dir': 'filer_public_thumbnails',
+            },
+        },
+    },
+}
+
 import filer.settings
 
 filer_storages = getattr(filer.settings, 'FILER_STORAGES', {})
@@ -42,3 +61,4 @@ filer_storages = getattr(filer.settings, 'FILER_STORAGES', {})
 LOGICAL_EQ_ACTUAL_URL = all(
     storage['main']['UPLOAD_TO'] == 'filer.utils.generate_filename.by_path'
     for storage in filer_storages.values())
+

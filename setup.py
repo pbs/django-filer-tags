@@ -6,7 +6,8 @@ README_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)),
                            'README.rst')
 
 dependencies = [
-    'django-filer',
+    'django-cms>=2.3.5pbs,<2.3.5pbs.1000',
+    'django-filer>=0.9pbs,<0.9pbs.1000',
 ]
 
 dependency_links = [
