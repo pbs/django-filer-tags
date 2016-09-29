@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+Revision b27a144 (29.09.2016, 12:11 UTC)
+----------------------------------------
+
+* LUN-3221
+
+  * Also search modified upload names for files identified by logical path.
+
+No other commits.
+
 Revision 1ab0e23 (24.09.2015, 13:45 UTC)
 ----------------------------------------
 
