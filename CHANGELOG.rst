@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+Revision b7f76ca (19.08.2019, 13:11 UTC)
+----------------------------------------
+
+No new issues.
+
+* Misc commits
+
+  * Remove django-cms requirement
+
 Revision 77c3aa3 (06.11.2018, 15:37 UTC)
 ----------------------------------------
 
