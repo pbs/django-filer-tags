@@ -6,7 +6,6 @@ README_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)),
                            'README.rst')
 
 dependencies = [
-    'django-cms>=2.3.5pbs,<2.3.5pbs.1000',
     'django-filer>=0.9pbs,<0.9pbs.1000',
 ]
 
@@ -15,14 +14,14 @@ dependency_links = [
 
 setup(
     name='django-filer-tags',
-    version='1.1.1',
+    version='1.2.0',
     description='Extra template filters and tags for filer',
-    long_description = open(README_PATH, 'r').read(),
+    long_description=open(README_PATH, 'r').read(),
     author='Sever Banesiu',
     author_email='banesiu.sever@gmail.com',
     url='https://github.com/pbs/django-filer-tags',
-    packages = find_packages(),
+    packages=find_packages(),
     include_package_data=True,
-    install_requires = dependencies,
-    dependency_links = dependency_links,
+    install_requires=dependencies,
+    dependency_links=dependency_links,
 )
