@@ -188,4 +188,4 @@ class TestMatchFiles(TestCase):
         search_path = '/media/folder/test.txt'
         self.assertIsNone(find_hashed_file(search_path))
         searched_file = create_filer_file("test.txt", folder, content="test")
-        self.assertEquals(find_hashed_file(search_path), searched_file)
+        self.assertEqual(find_hashed_file(search_path), searched_file)

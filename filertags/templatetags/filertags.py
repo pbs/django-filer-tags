@@ -35,14 +35,14 @@ def filerthumbnail(path):
                 folder = Folder.objects.get(name=folder_name, parent=current_parent)
             current_parent = folder
         return File.objects.get(q_matches_name(file_name), Q(folder=folder)).file
-    except (File.DoesNotExist, File.MultipleObjectsReturned, Folder.DoesNotExist), e:
+    except (File.DoesNotExist, File.MultipleObjectsReturned, Folder.DoesNotExist) as e:
         logger.info('%s on %s' % (e.message, path))
         return None
 
 
 def get_possible_paths(path):
     return ['%s/%s' % (storage['main']['UPLOAD_TO_PREFIX'], path)
-            for storage in filer_settings.FILER_STORAGES.values()]
+            for storage in list(filer_settings.FILER_STORAGES.values())]
 
 
 def find_hashed_file(path):
@@ -67,7 +67,7 @@ def filerfile(path):
     if LOGICAL_EQ_ACTUAL_URL:
         try:
             return File.objects.get(file__in=get_possible_paths(path)).url
-        except (File.DoesNotExist, File.MultipleObjectsReturned), e:
+        except (File.DoesNotExist, File.MultipleObjectsReturned) as e:
             filer_file = find_hashed_file(path)
             if filer_file:
                 return filer_file.url
