@@ -1,7 +1,7 @@
 import codecs
 import hashlib
 import re
-import urlparse
+import urllib.parse
 
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import UploadedFile
@@ -10,15 +10,15 @@ from django.db.models import signals
 from filer.models.filemodels import File
 from filer.models.imagemodels import Image
 from filertags.settings import LOGICAL_EQ_ACTUAL_URL
-from templatetags.filertags import filerfile
+from .templatetags.filertags import filerfile
 
 
-_LOGICAL_URL_TEMPLATE = u"/* logicalurl('%s') */"
-_RESOURCE_URL_TEMPLATE = u"url('%s') " + _LOGICAL_URL_TEMPLATE
-_RESOURCE_URL_REGEX = re.compile(ur"\burl\(([^\)]*)\)")
+_LOGICAL_URL_TEMPLATE = "/* logicalurl('%s') */"
+_RESOURCE_URL_TEMPLATE = "url('%s') " + _LOGICAL_URL_TEMPLATE
+_RESOURCE_URL_REGEX = re.compile(r"\burl\(([^\)]*)\)")
 
-_COMMENT_REGEX = re.compile(ur"/\*.*?\*/")
-_ALREADY_PARSED_MARKER = u'/* Filer urls already resolved */'
+_COMMENT_REGEX = re.compile(r"/\*.*?\*/")
+_ALREADY_PARSED_MARKER = '/* Filer urls already resolved */'
 
 
 def _is_in_clipboard(filer_file):
@@ -109,19 +109,19 @@ def _get_filer_file_name(file_):
 
 
 def _insert_already_parsed_marker(content):
-    match = re.match(ur'@charset "[^"]*";', content)
+    match = re.match(r'@charset "[^"]*";', content)
     if not match:
-        return u'%s\n%s' % (_ALREADY_PARSED_MARKER, content)
+        return '%s\n%s' % (_ALREADY_PARSED_MARKER, content)
     else:
         # make sure that the @charset statement remains the first
         # directive in the css
         end = match.end()
-        return u'%s%s%s' % (
+        return '%s%s%s' % (
             content[:end], _ALREADY_PARSED_MARKER, content[end:])
 
 
 def _is_already_parsed(content):
-    regex = ur'(@charset "([^"]*)";)?' + re.escape(_ALREADY_PARSED_MARKER)
+    regex = r'(@charset "([^"]*)";)?' + re.escape(_ALREADY_PARSED_MARKER)
     return re.match(regex, content) is not None
 
 
@@ -182,13 +182,13 @@ def resolve_resource_urls(instance, **kwargs):
                 return match.group()
         # strip spaces and quotes
         url = match.group(1).strip('\'\" ')
-        parsed_url = urlparse.urlparse(url)
+        parsed_url = urllib.parse.urlparse(url)
         if parsed_url.netloc or parsed_url.scheme not in ['', 'http', 'https']:
             # ignore everyghing which is not served through http
             # or explicitly specifies a hostname; these are resources
             # not served from filer
             return match.group()
-        logical_file_path = urlparse.urljoin(logical_folder_path, url)
+        logical_file_path = urllib.parse.urljoin(logical_folder_path, url)
         if not logical_file_path in local_cache:
             local_cache[logical_file_path] = _RESOURCE_URL_TEMPLATE % (
                 filerfile(logical_file_path), logical_file_path)
@@ -202,9 +202,9 @@ def resolve_resource_urls(instance, **kwargs):
 
 def update_url_statements_in_css(css, resource_file, logical_file_path):
     logical_url_snippet = _LOGICAL_URL_TEMPLATE % logical_file_path
-    url_updating_regex = u"%s %s" % (
+    url_updating_regex = "%s %s" % (
         _RESOURCE_URL_REGEX.pattern, re.escape(logical_url_snippet))
-    repl = u"url('%s') %s" % (resource_file.url, logical_url_snippet)
+    repl = "url('%s') %s" % (resource_file.url, logical_url_snippet)
     try:
         css.file.seek(0)
         old_content = css.file.read()
@@ -244,7 +244,7 @@ def update_referencing_css_files(instance, **kwargs):
     if _is_in_clipboard(resource_file):
         return
     resource_name = _get_filer_file_name(resource_file)
-    logical_file_path = urlparse.urljoin(
+    logical_file_path = urllib.parse.urljoin(
         _construct_logical_folder_path(resource_file),
         resource_name)
     css_files = File.objects.filter(original_filename__endswith=".css")
