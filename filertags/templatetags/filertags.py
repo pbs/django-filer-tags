@@ -36,7 +36,7 @@ def filerthumbnail(path):
             current_parent = folder
         return File.objects.get(q_matches_name(file_name), Q(folder=folder)).file
     except (File.DoesNotExist, File.MultipleObjectsReturned, Folder.DoesNotExist) as e:
-        logger.info('%s on %s' % (e.message, path))
+        logger.info('%s on %s' % (str(e), path))
         return None
 
 
@@ -71,7 +71,7 @@ def filerfile(path):
             filer_file = find_hashed_file(path)
             if filer_file:
                 return filer_file.url
-            logger.info('%s on %s' % (e.message, path))
+            logger.info('%s on %s' % (str(e), path))
             return path
     else:
         file_obj = filerthumbnail(path)
